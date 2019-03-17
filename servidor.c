@@ -1,4 +1,4 @@
-
+/* Informacion acerca del codigo, como autor y fecha */
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
@@ -223,5 +223,3 @@ int main(){
 
   return 0;
 }
-
-
