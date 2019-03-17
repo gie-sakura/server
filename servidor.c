@@ -42,9 +42,19 @@ char pag_respuesta[]=
     "</center></body>\r\n";
 
 //Funcion principal
+// int callback(void *, int, char **, char **);
+int callback(void *NotUsed, int argc, char **argv, char **azColName) {
+    NotUsed=0;
+    for(int i=0; i< argc; i++) {
+	printf("Entrando a callback\n");
+	printf("%s=%s\n",azColName[i],argv[i]);
+    }
+    printf("\n");
+    return 0;
+}
 
-int callback(void *, int, char **, char **);
-int main(){
+int main()
+{
     struct sockaddr_in server_addr, client_addr;
     socklen_t sin_len=sizeof(client_addr);
     int fd_server, fd_client,rc;
@@ -52,37 +62,25 @@ int main(){
     char buf2[2048];
     int on=1, pdbg=0;
     int bind_result,max_con,idx;
-    FILE *fp;
+    // FILE *fp; // No usada
     sqlite3 *db;
     sqlite3_stmt *stmt;
-    char *sql, *err_msg, *data, *getenv(), *infobase;
+    char *sql, *err_msg,  *getenv();
+    // char *data, *infobase; // No usada
     char *method,*uri, *valor;
 	
-
 #ifdef debug
     pdbg=1;
+    printf("Definido Modo Debug\n");
 #endif
-
-    if(pdbg==1){
-	printf("Definido Modo Debug\n");
-    }
-
-
-    int callback(void *NotUsed, int argc, char **argv, char **azColName){
-	NotUsed=0;
-	for(int i=0; i< argc; i++) {
-	    printf("Entrando a callback\n");
-	    printf("%s=%s\n",azColName[i],argv[i]);
-	}
-	printf("\n");
-    }
+    
     rc=sqlite3_open("base_nombres.db",&db);
-    if(rc){
+    if(rc) {
 	fprintf(stderr,"No puede abrir base de Datos: %s\n", sqlite3_errmsg(db));
 	sqlite3_close(db);
 	return(1);
     }
-    else{
+    else {
 	printf("Base creada\n");
     }
 
@@ -90,13 +88,14 @@ int main(){
 	"CREATE TABLE Usuarios(Name TEXT);";
     rc=sqlite3_exec(db,sql,0,0, &err_msg);
 
-    if(rc != SQLITE_OK){
+    if(rc != SQLITE_OK) {
 	fprintf(stderr,"SQL error: %s\n",err_msg);
 	sqlite3_free(err_msg);
 	sqlite3_close(db);
 	return 1;
-    }else
+    } else {
 	printf("Tabla Creada\n");
+    }
 
     fd_server=socket(AF_INET,SOCK_STREAM,0);//llamada al socket
     if(fd_server<0){
@@ -118,15 +117,12 @@ int main(){
 	close(fd_server);//Se cierra el socket
 	exit(1);
     }
-	
     max_con=listen(fd_server,10);//Maxima cantidad de conexiones
-
     if(max_con==-1){
 	perror("listen");
 	close(fd_server);
 	exit(1);
     }
-
     //Bucle para gestionar las conexiones
     while(1){
 	//Aceptar nuevas conexiones
@@ -145,21 +141,17 @@ int main(){
 	    if(pdbg==1){printf("metodo: %s\n",method);}
 	    uri=strtok(NULL," \t");
 	    if(pdbg==1){printf("Uri: %s\n",uri);}	
-	    int strnc=strncmp(buf,"GET /favicon.ico",16);
-	    //if(!strncmp(buf,"GET /favicon.ico",16)){
 	    if(!strcmp(method,"GET") && !strcmp(uri,"/")){
 		write(fd_client,paginaweb,sizeof(paginaweb)-1);
 	    }
 	    else if(!strncmp(buf, "GET /icono.png",14)){
 		write(fd_client,paginaweb,sizeof(paginaweb)-1);
-		//}else if(!strncmp(buf,"GET /guardar",12)){
 	    }else if(!strcmp(method,"GET") && !strncmp(uri,"/guardar",8)){
 		valor=strtok(uri,"=");
 		if(valor!=NULL){
 		    valor=strtok(NULL,"=");
 		}
 		printf("%s\n",valor);
-		//Insertar valores en Database
 		rc=sqlite3_prepare_v2(db,"INSERT INTO Usuarios (Name) VALUES (?)",-1,&stmt,NULL);
 		printf("%i\n",rc);
 		if(rc != SQLITE_OK){
@@ -169,7 +161,6 @@ int main(){
 		}else{
 		    printf("SQL statement prepared: OK\n\n\r");
 		}
-		//idx=sqlite3_bind_parameter_index( stmt, "Name");
 		idx=strlen(valor);
 		printf("%i\n",idx);
 		rc=sqlite3_bind_text(stmt,1,valor,idx,0);
@@ -186,40 +177,29 @@ int main(){
 		    return 1;
 		}
 		else{
-
 		    write(fd_client,pag_respuesta,sizeof(pag_respuesta)-1);
 		}
 		sqlite3_finalize(stmt);
 	    }else if(!strcmp(method,"GET") && !strncmp(uri,"/revisar",8)){
 		rc=sqlite3_exec(db,"SELECT * FROM Usuarios",callback,0,&err_msg);
 		if(rc!=SQLITE_OK){
-				
 		    fprintf(stderr, "Failed to select data\n");
 		    fprintf(stderr, "SQL error: %s\n",err_msg);
 		    sqlite3_free(err_msg);
 		    sqlite3_close(db);
 		    return 1;
-				
+		} else {
+		    write(fd_client,paginaweb,sizeof(paginaweb)-1);
 		}
-			
-			
-			
 	    }
 	    else{
-		//fp=fopen("index.html","r");
-		//sendfile(fd_client,fp,NULL,fsize("index.html"));
-		//fclose(fp);
 		printf("Entra en 3\n");
 		write(fd_client,paginaweb,sizeof(paginaweb)-1);
 	    }
 	    close(fd_client);
 	    printf("Cerrando...\n");
-	    //	exit(0);
 	}
 	close(fd_client);
     }
-
-	
-
     return 0;
 }
